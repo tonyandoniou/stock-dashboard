@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:100vh}
+.header{background:#0d1224;border-bottom:1px solid #1e2a45;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-size:17px;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:#3b82f6}
+.market-status{font-size:12px;padding:4px 10px;border-radius:20px;font-weight:500}
+.market-open{background:#0d2d1e;color:#34d399;border:1px solid #065f46}
+.market-closed{background:#2d1515;color:#f87171;border:1px solid #7f1d1d}
+.global-controls{padding:12px 24px;background:#0d1224;border-bottom:1px solid #1e2a45;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.global-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.tf-group{display:flex;gap:3px;background:#0a0e1a;border:1px solid #1e2a45;border-radius:8px;padding:3px}
+.tf-btn{background:none;border:none;color:#64748b;font-size:12px;font-weight:500;padding:5px 10px;border-radius:5px;cursor:pointer;transition:all .15s}
+.tf-btn:hover{color:#94a3b8;background:#1e2a45}
+.tf-btn.active{background:#3b82f6;color:#fff}
+.hint{font-size:11px;color:#334155}
+.section{padding:16px 24px}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.section-title{font-size:14px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px}
+.section-count{background:#1e2a45;color:#475569;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.card{background:#0d1224;border:1px solid #1e2a45;border-radius:12px;overflow:hidden;transition:border-color .2s;display:flex;flex-direction:column}
+.card:hover{border-color:#2d3f5e}
+.card-label{padding:12px 14px 6px;display:flex;align-items:center;justify-content:space-between}
+.ticker-block{display:flex;align-items:center;gap:8px}
+.ticker{font-size:12px;font-weight:700;color:#3b82f6;letter-spacing:.5px}
+.company-name{font-size:13px;font-weight:600;color:#e2e8f0}
+.cb{font-size:9px;background:#1e2a45;color:#475569;padding:2px 5px;border-radius:3px;font-weight:600}
+.tv-link{font-size:10px;color:#334155;text-decoration:none;transition:color .15s}
+.tv-link:hover{color:#3b82f6}
+.ticker-widget{padding:0 10px 4px}
+.chart-widget{padding:0 10px 8px}
+.card-tf{display:flex;gap:2px;padding:2px 10px 6px;flex-wrap:wrap}
+.ctf{background:none;border:none;color:#334155;font-size:10px;font-weight:600;padding:3px 7px;border-radius:4px;cursor:pointer;transition:all .15s}
+.ctf:hover{color:#94a3b8;background:#1e2a45}
+.ctf.active{background:#1e3a5f;color:#60a5fa}
+.ctf.override{background:#1e3f2a;color:#34d399}
+.news-section{border-top:1px solid #1e2a45;margin-top:auto}
+.news-toggle{width:100%;background:none;border:none;color:#334155;font-size:11px;font-weight:500;padding:7px 14px;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;transition:color .15s}
+.news-toggle:hover{color:#64748b}
+.news-items{padding:6px 14px 10px;display:none}
+.news-item{padding:5px 0;border-bottom:1px solid #0f172a}
+.news-item:last-child{border-bottom:none}
+.nh a{font-size:11px;color:#94a3b8;line-height:1.4;text-decoration:none}
+.nh a:hover{color:#60a5fa}
+.nm{font-size:10px;color:#334155;margin-top:2px}
+.ns{color:#3b82f6}
+.divider{height:1px;background:#1e2a45;margin:0 24px}
+.spin{width:10px;height:10px;border:1.5px solid #1e2a45;border-top-color:#3b82f6;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{color:#f87171;font-size:11px;padding:6px 0}
+/* Make TV widgets transparent background */
+.tradingview-widget-container{background:transparent!important}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo"><div class="logo-dot"></div>Stock Dashboard</div>
+  <div id="mstat" class="market-status market-closed">● Market Closed</div>
+</div>
+
+<div class="global-controls">
+  <span class="global-label">Global:</span>
+  <div class="tf-group" id="gtfbar">
+    <button class="tf-btn active" data-tf="1D">1D</button>
+    <button class="tf-btn" data-tf="1W">1W</button>
+    <button class="tf-btn" data-tf="1M">1M</button>
+    <button class="tf-btn" data-tf="3M">3M</button>
+    <button class="tf-btn" data-tf="6M">6M</button>
+    <button class="tf-btn" data-tf="YTD">YTD</button>
+    <button class="tf-btn" data-tf="1Y">1Y</button>
+    <button class="tf-btn" data-tf="2Y">2Y</button>
+  </div>
+  <span class="hint">Green card buttons = individual override</span>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <span style="font-size:18px">🌐</span>
+    <span class="section-title">International Shares</span>
+    <span class="section-count">13</span>
+  </div>
+  <div class="grid" id="ig"></div>
+</div>
+<div class="divider"></div>
+<div class="section">
+  <div class="section-header">
+    <span style="font-size:18px">🇦🇺</span>
+    <span class="section-title">Australian Shares</span>
+    <span class="section-count">23</span>
+  </div>
+  <div class="grid" id="ag"></div>
+</div>
+
+<script>
+const INTL=[
+  {t:'ABBN',tv:'SIX:ABBN',n:'ABB Ltd',c:'CHF'},
+  {t:'GOOGL',tv:'NASDAQ:GOOGL',n:'Alphabet Inc.',c:'USD'},
+  {t:'AMZN',tv:'NASDAQ:AMZN',n:'Amazon.com Inc.',c:'USD'},
+  {t:'AAPL',tv:'NASDAQ:AAPL',n:'Apple Inc.',c:'USD'},
+  {t:'BRK.B',tv:'NYSE:BRK.B',n:'Berkshire Hathaway',c:'USD'},
+  {t:'CRWD',tv:'NASDAQ:CRWD',n:'CrowdStrike Holdings',c:'USD'},
+  {t:'DE',tv:'NYSE:DE',n:'Deere & Company',c:'USD'},
+  {t:'LMT',tv:'NYSE:LMT',n:'Lockheed Martin',c:'USD'},
+  {t:'MC',tv:'EURONEXT:MC',n:'LVMH Moët Hennessy',c:'EUR'},
+  {t:'MCD',tv:'NYSE:MCD',n:"McDonald's Corporation",c:'USD'},
+  {t:'MSFT',tv:'NASDAQ:MSFT',n:'Microsoft Corporation',c:'USD'},
+  {t:'NESN',tv:'SIX:NESN',n:'Nestlé S.A.',c:'CHF'},
+  {t:'DIS',tv:'NYSE:DIS',n:'The Walt Disney Company',c:'USD'},
+];
+const AUS=[
+  {t:'AMCR',tv:'NYSE:AMCR',n:'Amcor plc',c:'USD'},
+  {t:'ANZ',tv:'ASX:ANZ',n:'ANZ Banking Group',c:'AUD'},
+  {t:'APA',tv:'ASX:APA',n:'APA Group',c:'AUD'},
+  {t:'ASX',tv:'ASX:ASX',n:'ASX Limited',c:'AUD'},
+  {t:'AZJ',tv:'ASX:AZJ',n:'Aurizon Holdings',c:'AUD'},
+  {t:'BHP',tv:'ASX:BHP',n:'BHP Group',c:'AUD'},
+  {t:'CLW',tv:'ASX:CLW',n:'Charter Hall Long WALE',c:'AUD'},
+  {t:'COL',tv:'ASX:COL',n:'Coles Group',c:'AUD'},
+  {t:'CSL',tv:'ASX:CSL',n:'CSL Limited',c:'AUD'},
+  {t:'FBR',tv:'ASX:FBR',n:'FBR Ltd',c:'AUD'},
+  {t:'GCI',tv:'ASX:GCI',n:'Gryphon Capital Income Trust',c:'AUD'},
+  {t:'MQG',tv:'ASX:MQG',n:'Macquarie Group',c:'AUD'},
+  {t:'MPL',tv:'ASX:MPL',n:'Medibank Private',c:'AUD'},
+  {t:'NSR',tv:'ASX:NSR',n:'National Storage REIT',c:'AUD'},
+  {t:'REH',tv:'ASX:REH',n:'Reece Limited',c:'AUD'},
+  {t:'RMD',tv:'ASX:RMD',n:'ResMed Inc.',c:'AUD'},
+  {t:'RFF',tv:'ASX:RFF',n:'Rural Funds Group',c:'AUD'},
+  {t:'SHL',tv:'ASX:SHL',n:'Sonic Healthcare',c:'AUD'},
+  {t:'SOL',tv:'ASX:SOL',n:'Washington H. Soul Pattinson',c:'AUD'},
+  {t:'TLS',tv:'ASX:TLS',n:'Telstra Group',c:'AUD'},
+  {t:'WBC',tv:'ASX:WBC',n:'Westpac Banking',c:'AUD'},
+  {t:'WDS',tv:'ASX:WDS',n:'Woodside Energy',c:'AUD'},
+  {t:'WOW',tv:'ASX:WOW',n:'Woolworths Group',c:'AUD'},
+];
+const ALL=[...INTL,...AUS];
+
+// TradingView timeframe mapping
+const TF_MAP={
+  '1D':'1D','1W':'1W','1M':'1M','3M':'3M',
+  '6M':'6M','YTD':'YTD','1Y':'12M','2Y':'24M'
+};
+
+let gTf='1D';
+const cTf={};
+const newsCache={};
+
+function cid(t){return 'c_'+t.replace(/[^a-zA-Z0-9]/g,'_');}
+
+function isOpen(){
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const d=et.getDay(),m=et.getHours()*60+et.getMinutes();
+  return d>=1&&d<=5&&m>=570&&m<960;
+}
+function updateStatus(){
+  const el=document.getElementById('mstat');
+  if(isOpen()){el.className='market-status market-open';el.textContent='● Market Open';}
+  else{el.className='market-status market-closed';el.textContent='● Market Closed';}
+}
+
+function makeMiniChart(containerId, symbol, tf){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML='';
+  const wrap=document.createElement('div');
+  wrap.className='tradingview-widget-container';
+  const inner=document.createElement('div');
+  inner.className='tradingview-widget-container__widget';
+  wrap.appendChild(inner);
+  el.appendChild(wrap);
+
+  const s=document.createElement('script');
+  s.type='text/javascript';
+  s.src='https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js';
+  s.async=true;
+  s.innerHTML=JSON.stringify({
+    symbol,
+    width:'100%',
+    height:150,
+    locale:'en',
+    dateRange:TF_MAP[tf]||'1D',
+    colorTheme:'dark',
+    isTransparent:true,
+    autosize:true,
+    largeChartUrl:'',
+    noTimeScale:false,
+  });
+  wrap.appendChild(s);
+}
+
+function makeSingleTicker(containerId, symbol){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML='';
+  const wrap=document.createElement('div');
+  wrap.className='tradingview-widget-container';
+  const inner=document.createElement('div');
+  inner.className='tradingview-widget-container__widget';
+  wrap.appendChild(inner);
+  el.appendChild(wrap);
+
+  const s=document.createElement('script');
+  s.type='text/javascript';
+  s.src='https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js';
+  s.async=true;
+  s.innerHTML=JSON.stringify({
+    symbol,
+    width:'100%',
+    locale:'en',
+    colorTheme:'dark',
+    isTransparent:true,
+  });
+  wrap.appendChild(s);
+}
+
+function createCard(stock){
+  const id=cid(stock.t);
+  const tfBtns=Object.keys(TF_MAP).map(tf=>
+    `<button class="ctf ${tf===gTf?'active':''}" data-tf="${tf}" onclick="setCardTf('${stock.t}','${tf}',this)">${tf}</button>`
+  ).join('');
+
+  const div=document.createElement('div');
+  div.className='card';
+  div.id=id;
+  div.innerHTML=`
+    <div class="card-label">
+      <div class="ticker-block">
+        <span class="ticker">${stock.t}</span>
+        <span class="cb">${stock.c}</span>
+        <span class="company-name">${stock.n}</span>
+      </div>
+      <a class="tv-link" href="https://www.tradingview.com/symbols/${stock.tv}/" target="_blank">↗ TradingView</a>
+    </div>
+    <div class="card-tf">${tfBtns}</div>
+    <div class="chart-widget" id="${id}_chart"></div>
+    <div class="news-section">
+      <button class="news-toggle" onclick="toggleNews('${stock.t}',this)">
+        <span>📰 Top News</span><span>▸</span>
+      </button>
+      <div class="news-items" id="${id}_news"></div>
+    </div>`;
+  return div;
+}
+
+function setCardTf(ticker, tf, btn){
+  cTf[ticker]=tf;
+  const id=cid(ticker);
+  document.querySelectorAll(`#${id} .ctf`).forEach(b=>{
+    b.classList.remove('active','override');
+    if(b.dataset.tf===tf) b.classList.add(tf===gTf?'active':'override');
+  });
+  const stock=ALL.find(s=>s.t===ticker);
+  makeMiniChart(id+'_chart', stock.tv, tf);
+}
+
+function setGlobalTf(tf){
+  gTf=tf;
+  document.querySelectorAll('#gtfbar .tf-btn').forEach(b=>b.classList.toggle('active',b.dataset.tf===tf));
+  ALL.forEach(s=>{
+    const id=cid(s.t);
+    const hasOverride=document.querySelector(`#${id} .ctf.override`);
+    if(!hasOverride){
+      cTf[s.t]=tf;
+      document.querySelectorAll(`#${id} .ctf`).forEach(b=>{
+        b.classList.remove('active','override');
+        if(b.dataset.tf===tf) b.classList.add('active');
+      });
+      makeMiniChart(id+'_chart', s.tv, tf);
+    }
+  });
+}
+
+async function toggleNews(ticker, btn){
+  const id=cid(ticker);
+  const el=document.getElementById(id+'_news');
+  const arr=btn.querySelector('span:last-child');
+  if(el.style.display==='block'){el.style.display='none';arr.textContent='▸';return;}
+  el.style.display='block';arr.textContent='▾';
+  if(newsCache[ticker]){el.innerHTML=newsCache[ticker];return;}
+  el.innerHTML='<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#475569;padding:4px 0"><span class="spin"></span> Fetching news...</div>';
+  const s=ALL.find(x=>x.t===ticker);
+  try{
+    const resp=await fetch('/.netlify/functions/news',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:s.n, ticker:s.t})
+    });
+    const data=await resp.json();
+    const articles=data.articles;
+    const html=articles.map(a=>`<div class="news-item"><div class="nh"><a href="${a.url}" target="_blank">${a.headline}</a></div><div class="nm"><span class="ns">${a.source}</span> · ${a.age}</div></div>`).join('');
+    newsCache[ticker]=html;el.innerHTML=html;
+  }catch(e){el.innerHTML='<div class="err">Could not load news</div>';}
+}
+
+// Init
+updateStatus();setInterval(updateStatus,60000);
+document.getElementById('gtfbar').addEventListener('click',e=>{
+  const b=e.target.closest('.tf-btn');if(b)setGlobalTf(b.dataset.tf);
+});
+
+// Build cards and render widgets
+INTL.forEach(s=>{
+  document.getElementById('ig').appendChild(createCard(s));
+  cTf[s.t]=gTf;
+  makeMiniChart(cid(s.t)+'_chart', s.tv, gTf);
+});
+AUS.forEach(s=>{
+  document.getElementById('ag').appendChild(createCard(s));
+  cTf[s.t]=gTf;
+  makeMiniChart(cid(s.t)+'_chart', s.tv, gTf);
+});
+</script>
+</body>
+</html>
